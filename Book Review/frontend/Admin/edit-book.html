@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Book - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body class="admin-body">
+    <div class="admin-wrapper">
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>📚 BookReview</h2>
+                <p>Admin Panel</p>
+            </div>
+            <nav class="admin-nav">
+                <a href="admin-dashboard.html" class="nav-item">📊 Dashboard</a>
+                <a href="manage-books.html" class="nav-item active">📖 Manage Books</a>
+                <a href="manage-users.html" class="nav-item">👥 Manage Users</a>
+                <a href="manage-reviews.html" class="nav-item">⭐ Manage Reviews</a>
+                <a href="../user/login.html" class="nav-item logout">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="admin-main">
+            <div class="admin-header">
+                <h1>Edit Book</h1>
+                <a href="manage-books.html" class="btn-secondary">← Back to Books</a>
+            </div>
+
+            <div class="form-container">
+                <form class="admin-form" id="editBookForm">
+                    <div class="form-group">
+                        <label for="title">Book Title *</label>
+                        <input type="text" id="title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="author">Author *</label>
+                        <input type="text" id="author" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="genre">Genre *</label>
+                            <select id="genre" required>
+                                <option value="">Select Genre</option>
+                                <option>Fiction</option>
+                                <option>Classic</option>
+                                <option>Fantasy</option>
+                                <option>Dystopian</option>
+                                <option>Romance</option>
+                                <option>Mystery</option>
+                                <option>Science Fiction</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="published-date">Published Date</label>
+                            <input type="date" id="published-date">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Current Cover Image</label>
+                        <div id="current-cover-container" style="margin-bottom: 10px;">
+                            <img id="current-cover-preview" src="" alt="Book Cover" style="max-width: 120px; border-radius: 8px; display: none;">
+                            <span id="no-cover-text" style="color: var(--text-gray); font-style: italic;">No cover image uploaded</span>
+                        </div>
+                        <label for="cover-image">Upload New Cover Image</label>
+                        <input type="file" id="cover-image" accept="image/*">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="6"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Update Book</button>
+                        <button type="button" class="btn-danger" id="deleteBookBtn">Delete Book</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Get book ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('id');
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function isAdminLoggedIn() {
+            const user = localStorage.getItem('user');
+            if (user) {
+                const userData = JSON.parse(user);
+                return userData.role === 'admin';
+            }
+            return false;
+        }
+
+        function checkAdminAuth() {
+            if (!isAdminLoggedIn()) {
+                alert('Please login as admin to access this page');
+                window.location.href = '../user/login.html';
+            }
+        }
+
+        async function fetchBookDetails() {
+            if (!bookId) {
+                alert('No Book ID provided!');
+                window.location.href = 'manage-books.html';
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/books/${bookId}/`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const book = data.book;
+                    document.getElementById('title').value = book.title;
+                    document.getElementById('author').value = book.author;
+                    document.getElementById('genre').value = book.genre;
+                    document.getElementById('published-date').value = book.published_date || '';
+                    document.getElementById('description').value = book.description || '';
+                    
+                    if (book.cover_url) {
+                        const preview = document.getElementById('current-cover-preview');
+                        preview.src = book.cover_url;
+                        preview.style.display = 'block';
+                        document.getElementById('no-cover-text').style.display = 'none';
+                    } else {
+                        document.getElementById('current-cover-preview').style.display = 'none';
+                        document.getElementById('no-cover-text').style.display = 'block';
+                    }
+                } else {
+                    alert('Book not found');
+                    window.location.href = 'manage-books.html';
+                }
+            } catch (error) {
+                console.error('Error fetching book details:', error);
+                alert('Error loading book details');
+            }
+        }
+
+        document.getElementById('editBookForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const genre = document.getElementById('genre').value;
+            const published_date = document.getElementById('published-date').value || '';
+            const description = document.getElementById('description').value || '';
+            const cover_image = document.getElementById('cover-image').files[0];
+            
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('author', author);
+            formData.append('genre', genre);
+            if (published_date) {
+                formData.append('published_date', published_date);
+            }
+            formData.append('description', description);
+            if (cover_image) {
+                formData.append('cover_image', cover_image);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/books/${bookId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    alert('Book updated successfully!');
+                    window.location.href = 'manage-books.html';
+                } else {
+                    alert(data.message || 'Failed to update book');
+                }
+            } catch (error) {
+                console.error('Error updating book:', error);
+                alert('Error connecting to server');
+            }
+        });
+
+        document.getElementById('deleteBookBtn').addEventListener('click', async function() {
+            if (confirm('Are you sure you want to delete this book? This will also delete all of its reviews.')) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/books/${bookId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert('Book deleted successfully!');
+                        window.location.href = 'manage-books.html';
+                    } else {
+                        alert('Failed to delete book');
+                    }
+                } catch (error) {
+                    console.error('Error deleting book:', error);
+                    alert('Error deleting book');
+                }
+            }
+        });
+
+        // Initialize
+        checkAdminAuth();
+        fetchBookDetails();
+    </script>
+</body>
+</html>

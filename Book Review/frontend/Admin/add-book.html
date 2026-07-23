@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Book - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body class="admin-body">
+    <div class="admin-wrapper">
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h2>📚 BookReview</h2>
+                <p>Admin Panel</p>
+            </div>
+            <nav class="admin-nav">
+                <a href="admin-dashboard.html" class="nav-item">📊 Dashboard</a>
+                <a href="manage-books.html" class="nav-item active">📖 Manage Books</a>
+                <a href="manage-users.html" class="nav-item">👥 Manage Users</a>
+                <a href="manage-reviews.html" class="nav-item">⭐ Manage Reviews</a>
+                <a href="../user/login.html" class="nav-item logout">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="admin-main">
+            <div class="admin-header">
+                <h1>Add New Book</h1>
+                <a href="manage-books.html" class="btn-secondary">← Back to Books</a>
+            </div>
+
+            <div class="form-container">
+                <form class="admin-form" id="addBookForm">
+                    <div class="form-group">
+                        <label for="title">Book Title *</label>
+                        <input type="text" id="title" placeholder="Enter book title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="author">Author *</label>
+                        <input type="text" id="author" placeholder="Enter author name" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="genre">Genre *</label>
+                            <select id="genre" required>
+                                <option value="">Select Genre</option>
+                                <option>Fiction</option>
+                                <option>Classic</option>
+                                <option>Fantasy</option>
+                                <option>Dystopian</option>
+                                <option>Romance</option>
+                                <option>Mystery</option>
+                                <option>Science Fiction</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="published-date">Published Date</label>
+                            <input type="date" id="published-date">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cover-image">Book Cover Image *</label>
+                        <input type="file" id="cover-image" accept="image/*" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="6" placeholder="Enter book description..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Add Book</button>
+                        <button type="reset" class="btn-secondary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function isAdminLoggedIn() {
+            const user = localStorage.getItem('user');
+            if (user) {
+                const userData = JSON.parse(user);
+                return userData.role === 'admin';
+            }
+            return false;
+        }
+
+        function checkAdminAuth() {
+            if (!isAdminLoggedIn()) {
+                alert('Please login as admin to access this page');
+                window.location.href = '../user/login.html';
+            }
+        }
+
+        document.getElementById('addBookForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const genre = document.getElementById('genre').value;
+            const published_date = document.getElementById('published-date').value || '';
+            const description = document.getElementById('description').value || '';
+            const cover_image = document.getElementById('cover-image').files[0];
+            
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('author', author);
+            formData.append('genre', genre);
+            if (published_date) {
+                formData.append('published_date', published_date);
+            }
+            formData.append('description', description);
+            if (cover_image) {
+                formData.append('cover_image', cover_image);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/books/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    alert('Book added successfully!');
+                    window.location.href = 'manage-books.html';
+                } else {
+                    alert(data.message || 'Failed to add book');
+                }
+            } catch (error) {
+                console.error('Error adding book:', error);
+                alert('Error connecting to server');
+            }
+        });
+
+        // Initialize
+        checkAdminAuth();
+    </script>
+</body>
+</html>
