@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookReview - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Glassmorphism Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <h2>📚 BookReview</h2>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="books.html">Books</a></li>
+                <li><a href="profile.html">Profile</a></li>
+                <li><a href="reviews.html">Reviews</a></li>
+                <li><a href="login.html" class="btn-login">Login</a></li>
+                <li><a href="register.html" class="btn-register">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Gradient Background -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Discover Your Next Favorite Book</h1>
+            <p>Read reviews, share your thoughts, and connect with book lovers worldwide.</p>
+            <div class="hero-buttons">
+                <a href="books.html" class="btn-primary">Explore Books</a>
+                <a href="register.html" class="btn-secondary">Join Now</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search Bar Section -->
+    <section class="search-section">
+        <div class="container">
+            <div class="search-box">
+                <h3>Search for Books</h3>
+                <form action="books.html" method="get">
+                    <input type="text" name="search" placeholder="Search by title, author, or genre..." class="search-input">
+                    <button type="submit" class="search-btn">🔍 Search</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Books Section -->
+    <section class="featured-books">
+        <div class="container">
+            <div class="section-header">
+                <h2>Featured Books</h2>
+                <p>Most popular books this month</p>
+            </div>
+            <div class="books-grid" id="featuredBooksGrid">
+                <div class="loading">Loading featured books...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recently Added Books Section -->
+    <section class="recently-added" style="padding: 60px 0; background: white;">
+        <div class="container">
+            <div class="section-header">
+                <h2>Recently Added Books</h2>
+                <p>Check out our latest additions</p>
+            </div>
+            <div class="books-grid" id="recentBooksGrid">
+                <div class="loading">Loading recent books...</div>
+            </div>
+        </div>
+    </section>
+
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function generateStars(rating) {
+            let stars = '';
+            const rounded = Math.round(rating);
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rounded) {
+                    stars += '<span class="star filled">★</span>';
+                } else {
+                    stars += '<span class="star">★</span>';
+                }
+            }
+            return stars;
+        }
+
+        async function fetchHomeBooks() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/books/`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const books = data.books || [];
+                    // Sort by average rating descending, then take top 4
+                    const featured = [...books]
+                        .sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0))
+                        .slice(0, 4);
+                        
+                    // Sort by ID descending, then take top 4
+                    const recent = [...books]
+                        .sort((a, b) => b.id - a.id)
+                        .slice(0, 4);
+                        
+                    displayFeaturedBooks(featured);
+                    displayRecentBooks(recent);
+                } else {
+                    document.getElementById('featuredBooksGrid').innerHTML = '<div class="error">Failed to load featured books</div>';
+                    document.getElementById('recentBooksGrid').innerHTML = '<div class="error">Failed to load recent books</div>';
+                }
+            } catch (error) {
+                console.error('Error fetching home books:', error);
+                document.getElementById('featuredBooksGrid').innerHTML = '<div class="error">Cannot connect to server</div>';
+                document.getElementById('recentBooksGrid').innerHTML = '<div class="error">Cannot connect to server</div>';
+            }
+        }
+
+        function displayFeaturedBooks(books) {
+            const grid = document.getElementById('featuredBooksGrid');
+            if (books.length === 0) {
+                grid.innerHTML = '<div class="no-books">No books available.</div>';
+                return;
+            }
+            
+            grid.innerHTML = books.map(book => `
+                <div class="book-card">
+                    <div class="book-cover">
+                        <img src="${book.cover_url || 'https://via.placeholder.com/200x300?text=No+Cover'}" alt="${escapeHtml(book.title)}">
+                    </div>
+                    <div class="book-info">
+                        <h3>${escapeHtml(book.title)}</h3>
+                        <p class="author">${escapeHtml(book.author)}</p>
+                        <div class="rating">
+                            <div class="stars">
+                                ${generateStars(book.avg_rating || 0)}
+                            </div>
+                            <span class="rating-value">${(book.avg_rating || 0).toFixed(1)}</span>
+                        </div>
+                        <p class="genre">${escapeHtml(book.genre)}</p>
+                        <a href="book-detail.html?id=${book.id}" class="btn-details">View Details</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayRecentBooks(books) {
+            const grid = document.getElementById('recentBooksGrid');
+            if (books.length === 0) {
+                grid.innerHTML = '<div class="no-books">No books available.</div>';
+                return;
+            }
+            
+            grid.innerHTML = books.map(book => `
+                <div class="book-card">
+                    <div class="book-cover">
+                        <img src="${book.cover_url || 'https://via.placeholder.com/200x300?text=No+Cover'}" alt="${escapeHtml(book.title)}">
+                    </div>
+                    <div class="book-info">
+                        <h3>${escapeHtml(book.title)}</h3>
+                        <p class="author">${escapeHtml(book.author)}</p>
+                        <div class="rating">
+                            <div class="stars">
+                                ${generateStars(book.avg_rating || 0)}
+                            </div>
+                            <span class="rating-value">${(book.avg_rating || 0).toFixed(1)}</span>
+                        </div>
+                        <p class="genre">${escapeHtml(book.genre)}</p>
+                        <a href="book-detail.html?id=${book.id}" class="btn-details">View Details</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateNavbar() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            const navLinks = document.querySelector('.nav-links');
+            
+            if (token && userStr) {
+                const user = JSON.parse(userStr);
+                navLinks.innerHTML = `
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="books.html">Books</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="reviews.html">Reviews</a></li>
+                    <li><a href="#" onclick="logout()" class="btn-logout">Logout (${escapeHtml(user.username)})</a></li>
+                `;
+            }
+        }
+        
+        window.logout = function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+        
+        updateNavbar();
+        fetchHomeBooks();
+    </script>
+</body>
+</html>

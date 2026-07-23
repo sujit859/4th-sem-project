@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Reviews - BookReview</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <h2>📚 BookReview</h2>
+            </div>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="books.html">Books</a></li>
+                <li><a href="profile.html">Profile</a></li>
+                <li><a href="reviews.html" class="active">Reviews</a></li>
+                <li><a href="login.html" class="btn-login">Login</a></li>
+                <li><a href="register.html" class="btn-register">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="reviews-container">
+        <div class="container">
+            <div class="page-header">
+                <h1>All Reviews</h1>
+                <p>Read what readers are saying about their favorite books</p>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="reviews-filter">
+                <select id="bookFilter" class="filter-select">
+                    <option value="all">All Books</option>
+                    <option value="The Great Gatsby">The Great Gatsby</option>
+                    <option value="1984">1984</option>
+                    <option value="To Kill a Mockingbird">To Kill a Mockingbird</option>
+                    <option value="The Hobbit">The Hobbit</option>
+                    <option value="Pride and Prejudice">Pride and Prejudice</option>
+                </select>
+                
+                <select id="ratingFilter" class="filter-select">
+                    <option value="all">All Ratings</option>
+                    <option value="5">5 Stars ★★★★★</option>
+                    <option value="4">4 Stars ★★★★☆</option>
+                    <option value="3">3 Stars ★★★☆☆</option>
+                    <option value="2">2 Stars ★★☆☆☆</option>
+                    <option value="1">1 Star ★☆☆☆☆</option>
+                </select>
+            </div>
+
+            <!-- Reviews List -->
+            <div class="all-reviews-list" id="allReviewsList">
+                <!-- Reviews will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 BookReview. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        // Check login status for navbar
+        function isLoggedIn() {
+            return getToken() !== null;
+        }
+
+        function getCurrentUser() {
+            const user = localStorage.getItem('user');
+            return user ? JSON.parse(user) : null;
+        }
+
+        // Update navbar based on login status
+        function updateNavbar() {
+            const navLinks = document.getElementById('navLinks');
+            const currentUser = getCurrentUser();
+            
+            if (isLoggedIn() && currentUser && currentUser.role !== 'admin') {
+                navLinks.innerHTML = `
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="books.html">Books</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="reviews.html" class="active">Reviews</a></li>
+                    <li><a href="#" id="logoutBtn" class="btn-logout">Logout (${currentUser.username})</a></li>
+                `;
+                document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            } else if (isLoggedIn() && currentUser && currentUser.role === 'admin') {
+                navLinks.innerHTML = `
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="books.html">Books</a></li>
+                    <li><a href="reviews.html" class="active">Reviews</a></li>
+                    <li><a href="#" id="logoutBtn" class="btn-logout">Logout (Admin)</a></li>
+                `;
+                document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate book filter dropdown from backend books list
+        async function loadBooksFilter() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/books/`);
+                const data = await response.json();
+                if (response.ok) {
+                    const bookFilterSelect = document.getElementById('bookFilter');
+                    bookFilterSelect.innerHTML = '<option value="all">All Books</option>' +
+                        data.books.map(b => `<option value="${escapeHtml(b.title)}">${escapeHtml(b.title)}</option>`).join('');
+                }
+            } catch (error) {
+                console.error("Error loading books filter:", error);
+            }
+        }
+
+        // Load and display all reviews
+        async function loadAllReviews() {
+            const bookFilter = document.getElementById('bookFilter').value;
+            const ratingFilter = document.getElementById('ratingFilter').value;
+            
+            try {
+                const url = `${API_BASE_URL}/reviews/?book_title=${encodeURIComponent(bookFilter)}&rating=${ratingFilter}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const reviewsList = document.getElementById('allReviewsList');
+                
+                if (!response.ok) {
+                    reviewsList.innerHTML = '<div class="error"><p>Failed to load reviews. Please try again.</p></div>';
+                    return;
+                }
+                
+                const reviews = data.reviews || [];
+                
+                if (reviews.length === 0) {
+                    reviewsList.innerHTML = '<div class="no-reviews"><p>No reviews found matching your criteria.</p></div>';
+                    return;
+                }
+                
+                reviewsList.innerHTML = reviews.map(review => `
+                    <div class="review-card-full">
+                        <div class="review-card-header">
+                            <div class="book-title">
+                                <h3>${escapeHtml(review.bookTitle)}</h3>
+                                <span class="book-author">Reviewed by ${escapeHtml(review.username)}</span>
+                            </div>
+                        </div>
+                        <div class="review-body">
+                            <div class="stars">
+                                ${Array(5).fill().map((_, i) => `<span class="star ${i < review.rating ? 'filled' : ''}">★</span>`).join('')}
+                            </div>
+                            <p class="review-text">${escapeHtml(review.comment)}</p>
+                            <div class="review-meta">
+                                <span>📅 Reviewed on: ${review.date}</span>
+                                <a href="book-detail.html?id=${review.bookId}" class="view-book-link">View Book →</a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                document.getElementById('allReviewsList').innerHTML = '<div class="error"><p>Cannot connect to server.</p></div>';
+            }
+        }
+
+        // Event listeners for filters
+        document.getElementById('bookFilter')?.addEventListener('change', loadAllReviews);
+        document.getElementById('ratingFilter')?.addEventListener('change', loadAllReviews);
+
+        // Initialize page
+        async function init() {
+            updateNavbar();
+            await loadBooksFilter();
+            loadAllReviews();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
